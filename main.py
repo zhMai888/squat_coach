@@ -58,6 +58,6 @@ class Action():
 
 
 if __name__ == "__main__":
-    a = ModelParm(video_path="images/test_video2.mp4")
+    a = ModelParm(video_path="videos/test_video.mp4")
     action = Action()
     action.run(a)

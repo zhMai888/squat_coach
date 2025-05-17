@@ -228,7 +228,7 @@ class SquatDetector:
 
 
 if __name__ == "__main__":
-    video_path = "images/test_video2.mp4"
+    video_path = "videos/test_video.mp4"
     detector = SquatDetector(video_path)
     squat_keypoints = detector.detect_squats()
     print("关键点数据数组形状:", squat_keypoints.shape)
