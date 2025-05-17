@@ -3,7 +3,7 @@ import numpy as np
 
 class Standard:
     def __init__(self, model: np.ndarray):
-        assert model.shape == (18, 3)
+        assert model.shape == (17, 3)
         self.model = model
 
     # 计算中点
@@ -28,14 +28,14 @@ class Standard:
     # 计算标准
     def evaluate_squat(self):
         # 关键点
-        left_shoulder = self.model[6]
-        right_shoulder = self.model[7]
-        left_hip = self.model[12]
-        right_hip = self.model[13]
-        left_knee = self.model[14]
-        right_knee = self.model[15]
-        left_ankle = self.model[16]
-        right_ankle = self.model[17]
+        left_shoulder = self.model[5]
+        right_shoulder = self.model[6]
+        left_hip = self.model[11]
+        right_hip = self.model[12]
+        left_knee = self.model[13]
+        right_knee = self.model[14]
+        left_ankle = self.model[15]
+        right_ankle = self.model[16]
 
         # 中点坐标计算
         shoulder_mid = self.midpoint(left_shoulder, right_shoulder)
@@ -48,8 +48,9 @@ class Standard:
         )
 
         # 躯干角度（肩膀到髋关节）
-        trunk_angle = math.degrees(math.atan2(shoulder_mid[1] - hip_mid[1],
-                                              shoulder_mid[0] - hip_mid[0]))
+        trunk_angle = min(abs(math.degrees(math.atan2(hip_mid[1] - shoulder_mid[1],hip_mid[0] - shoulder_mid[0]))),
+                          math.degrees(math.atan2(-(shoulder_mid[1] - hip_mid[1]),shoulder_mid[0] - hip_mid[0])))
+
         trunk_confidence = (shoulder_mid[2] + hip_mid[2]) / 2
 
         # 髋角度（髋关节-膝盖-脚踝）
@@ -74,32 +75,37 @@ class Standard:
         shoulder_knee_confidence = (left_shoulder[2] + right_shoulder[2] + left_knee[2] + right_knee[2]) / 4
 
         """
-        评估结果：
+        (信息, 置信度, 评估结果, 偏置量)
         trunk_angle: 躯干角度
         hip_angle: 髋角度
         knee_to_toe_distance: 膝盖到脚尖的距离
         heel_stability: 脚跟稳定性
-        squat_depth: 深蹲深度
+        squat_depth: 蹲起深度
         shoulder_symmetry: 肩部对称性
         knee_symmetry: 膝盖对称性
         knee_width: 膝盖宽度
         """
-        results = {
-            "trunk_angle": (trunk_angle, trunk_confidence, 1) if 60 <= trunk_angle <= 85 else (trunk_angle, trunk_confidence, 0),
-            "hip_angle": (hip_angle, hip_confidence, 1) if 30 <= hip_angle <= 75 else (hip_angle, hip_confidence, 0),
-            "knee_to_toe_distance": (knee_to_toe_distance, knee_to_toe_confidence, 1) if knee_to_toe_distance < 0.02 else (knee_to_toe_distance, knee_to_toe_confidence, 0),
-            "heel_stability": (heel_stability, heel_confidence, 1) if abs(heel_stability) < 0.02 else (heel_stability, heel_confidence, 0),
-            "squat_depth": (squat_depth, squat_depth_confidence, 1) if 0.15 <= squat_depth <= 0.3 else (squat_depth, squat_depth_confidence, 0),
-            "shoulder_symmetry": (abs(left_shoulder[1] - right_shoulder[1]), (left_shoulder[2] + right_shoulder[2]) / 2, 1) if abs(left_shoulder[1] - right_shoulder[1]) < 0.02 else (abs(left_shoulder[1] - right_shoulder[1]), (left_shoulder[2] + right_shoulder[2]) / 2, 0),
-            "knee_symmetry": (abs(left_knee[1] - right_knee[1]), (left_knee[2] + right_knee[2]) / 2, 1) if abs(left_knee[1] - right_knee[1]) < 0.02 else (abs(left_knee[1] - right_knee[1]), (left_knee[2] + right_knee[2]) / 2, 0),
-            "knee_width": (knee_width, shoulder_knee_confidence, 1) if abs(knee_width - shoulder_width) < 0.05 else (knee_width, shoulder_knee_confidence, 0)
-        }
+
+        results = [
+            [trunk_angle, trunk_confidence, 1, 0] if 60 <= trunk_angle <= 85 else [trunk_angle, trunk_confidence, 0, (trunk_angle - 60) * (trunk_angle < 60) + (trunk_angle - 85) * (trunk_angle > 85)],
+            [hip_angle, hip_confidence, 1, 0] if 30 <= hip_angle <= 75 else [hip_angle, hip_confidence, 0, (hip_angle - 30) * (hip_angle < 30) + (hip_angle - 75) * (hip_angle > 75)],
+            [knee_to_toe_distance, knee_to_toe_confidence, 1, 0] if knee_to_toe_distance < 0.07 else [knee_to_toe_distance, knee_to_toe_confidence, 0, (knee_to_toe_distance - 0.07)],
+            [heel_stability, heel_confidence, 1, 0] if abs(heel_stability) < 0.04 else [heel_stability, heel_confidence, 0, (heel_stability - 0.04)],
+            [squat_depth, squat_depth_confidence, 1, 0] if 0.05 <= squat_depth <= 0.15 else [squat_depth, squat_depth_confidence, 0, (squat_depth - 0.05) * (squat_depth < 0.05) + (squat_depth - 0.15) * (squat_depth > 0.15)],
+            [abs(left_shoulder[1] - right_shoulder[1]), (left_shoulder[2] + right_shoulder[2]) / 2, 1, 0] if abs(left_shoulder[1] - right_shoulder[1]) < 0.02 else [abs(left_shoulder[1] - right_shoulder[1]),(left_shoulder[2] + right_shoulder[2]) / 2, 0,abs(left_shoulder[1] - right_shoulder[1]) - 0.02],
+            [abs(left_knee[1] - right_knee[1]), (left_knee[2] + right_knee[2]) / 2, 1, 0] if abs(left_knee[1] - right_knee[1]) < 0.02 else [abs(left_knee[1] - right_knee[1]),(left_knee[2] + right_knee[2]) / 2, 0,abs(left_knee[1] - right_knee[1]) - 0.02],
+            [knee_width, shoulder_knee_confidence, 1, 0] if abs(knee_width - shoulder_width) < 0.05 else [knee_width,shoulder_knee_confidence,0, abs(knee_width - shoulder_width) - 0.05]
+        ]
+
+        np.set_printoptions(suppress=True, precision=3)
+
+        results = np.round(results,3).tolist()
 
         return results
 
 if __name__ == '__main__':
     model = np.array([
-        [0, 0, 1], [-0.022, 0.074, 0.996], [-0.002, 0.054, 0.986], [-0.042, 0.052, 0.987],
+        [-0.022, 0.074, 0.996], [-0.002, 0.054, 0.986], [-0.042, 0.052, 0.987],
         [0.026, 0.076, 0.847], [-0.071, 0.073, 0.808], [0.054, 0.208, 0.994], [-0.090, 0.208, 0.997],
         [0.087, 0.361, 0.959], [-0.131, 0.379, 0.979], [0.101, 0.484, 0.947], [-0.131, 0.517, 0.967],
         [0.040, 0.493, 0.998], [-0.066, 0.494, 0.998], [0.074, 0.747, 0.995], [-0.104, 0.750, 0.996],
@@ -109,5 +115,4 @@ if __name__ == '__main__':
     standard_model = Standard(model)
     res = standard_model.evaluate_squat()
     print("评估结果：")
-    for key, value in res.items():
-        print(f"{key}: {value[0]:.4f} (置信度: {value[1]:.4f}) (是否标准: {value[2]})")
+    print(res)

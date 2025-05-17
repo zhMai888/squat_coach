@@ -47,7 +47,7 @@ class SquatDetector:
     def extract_xyc(kp):
         """ 提取关键点的 (x, y, confidence)，如果空则返回0矩阵 """
         if kp is None:
-            return np.zeros((18, 3), dtype=np.float32)
+            return np.zeros((17, 3), dtype=np.float32)
         return kp[:, :3].astype(np.float32)
 
     def relocate_keypoints(self, keypoints):
@@ -65,7 +65,7 @@ class SquatDetector:
         height = abs(nose[1] - ankle_mid[1]) * 1.08
 
         # 设置新坐标系：x轴在中点，y轴在头顶，向下为正
-        relocated_keypoints = [[0, 0, 1]]  # 头顶
+        relocated_keypoints = []
         for kp in keypoints:
             x, y, conf = kp
             x = (x - ankle_mid[0]) / height
@@ -209,9 +209,9 @@ class SquatDetector:
 
         self.cap.release()
 
-        print(f"总共检测到 {self.squat_count} 次深蹲。")
+        # print(f"总共检测到 {self.squat_count} 次深蹲。")
 
-        # 整理成 numpy 数组，形状 (n, 5, 18, 3)
+        # 整理成 numpy 数组，形状 (n, 5, 17, 3)
         all_squats_array = []
 
         for squat in self.squats:
