@@ -75,7 +75,7 @@ class Prompt():
         prompt += str(data)+"\n"
         prompt += "一共有" + str(len(data)) + "次深蹲"
 
-        prompt += "\n\n"+"请参考之前的示例评价格式给这几次深蹲进行评价。"
+        prompt += "\n\n"+"请参考之前的示例评价格式给这几次深蹲进行评价。记住，是每次深蹲的表现以及整体表现。"
 
         return prompt
 
